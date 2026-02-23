@@ -1,0 +1,25 @@
+from calibre.web.feeds.news import BasicNewsRecipe
+
+class FTMix(BasicNewsRecipe):
+    title = 'Financial Times (Mix)'
+    language = 'en'
+    max_articles_per_feed = 25
+    oldest_article = 1
+    use_embedded_content = False
+
+    feeds = [
+        ('Home', 'https://www.ft.com/rss/home'),
+    ]
+
+    def get_browser(self, *args, **kwargs):
+        br = super().get_browser(*args, **kwargs)
+        br.addheaders = [
+            ('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+                           '(KHTML, like Gecko) Chrome/120.0 Safari/537.36'),
+            ('Accept-Language', 'en-US,en;q=0.9'),
+        ]
+        return br
+
+    remove_tags = [
+        dict(name=['script', 'style', 'noscript']),
+    ]
