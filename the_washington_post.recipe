@@ -1,0 +1,35 @@
+from calibre.web.feeds.news import BasicNewsRecipe
+from bs4 import BeautifulSoup
+
+class TheWashingtonPostRSS(BasicNewsRecipe):
+    title       = 'The Washington Post (RSS)'
+    description = 'Daily digest via RSS (summary + link).'
+    language    = 'en'
+    encoding    = 'utf-8'
+
+    oldest_article = 1
+    max_articles_per_feed = 30
+    use_embedded_content  = True  # RSS 里有 content/summary 就直接用
+    no_stylesheets        = True
+    remove_javascript     = True
+    auto_cleanup          = True
+
+    # 走 RSS：稳定、不会整本因为 403 挂掉
+    feeds = [
+        ('Top News', 'https://feeds.washingtonpost.com/rss/national'),
+        ('Politics', 'https://feeds.washingtonpost.com/rss/politics'),
+        ('World',    'https://feeds.washingtonpost.com/rss/world'),
+        ('Business', 'https://feeds.washingtonpost.com/rss/business'),
+        ('Tech',     'https://feeds.washingtonpost.com/rss/business/technology'),
+        ('Opinions', 'https://feeds.washingtonpost.com/rss/opinions'),
+    ]
+
+    def preprocess_html(self, soup):
+        # RSS 摘要里常有多余标签，做一次温和清理
+        for tag in soup(['script', 'style', 'noscript']):
+            tag.decompose()
+        return soup
+
+    def postprocess_html(self, soup, first_fetch):
+        # 确保保留原文链接（通常 RSS 自带 link，但这里再保险）
+        return soup
