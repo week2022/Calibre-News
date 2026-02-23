@@ -20,14 +20,19 @@ jobs:
       output: converted_ebooks
       publisher: bookfere.com
       author: Calibre News Delivery
+
       relay: ${{ secrets.SMTP }}
       port: ${{ secrets.PORT }}
       encrypt: ${{ secrets.ENCRYPT }}
       secret: ${{ secrets.SECRET }}
       from: ${{ secrets.FROM }}
       to: ${{ secrets.TO }}
+
+      # Optional secrets (can be empty); defaults are set in "Set defaults"
       ext: ${{ secrets.FORMAT }}
       size: ${{ secrets.SIZE }}
+      days: ${{ secrets.DAYS }}
+
     steps:
       - name: Checking Variable
         run: |
@@ -44,11 +49,19 @@ jobs:
             variable_keys=$(echo ${absences[@]/%/,})
             echo "Missing variable(s): ${variable_keys/%,/}"; exit 1
           fi
+
+      - name: Set defaults
+        run: |
+          echo "ext=${ext:-epub}" >> $GITHUB_ENV
+          echo "size=${size:-25}" >> $GITHUB_ENV
+          echo "days=${days:-90}" >> $GITHUB_ENV
+
       - name: Set up Python
         if: ${{ success() }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Install Calibre
         if: ${{ success() }}
         run: |
@@ -56,9 +69,11 @@ jobs:
           sudo apt-get install libegl1 libopengl0 libxcb-cursor0
           url=https://download.calibre-ebook.com/linux-installer.sh
           sudo -v && wget -nv -O- $url | sudo sh /dev/stdin
+
       - name: Retrieving Recipe
         if: ${{ success() }}
         uses: actions/checkout@v4
+
       - name: Checking Recipe
         if: ${{ success() }}
         run: |
@@ -95,6 +110,7 @@ jobs:
           if [ $count -eq 0 ]; then
             echo 'No recipe needs processing'; exit 1
           fi
+
       - name: Converting Ebook
         if: ${{ success() }}
         run: |
@@ -124,6 +140,7 @@ jobs:
           if [ $count -eq 0 ]; then
             echo 'No ebook needs send'; exit 1
           fi
+
       - name: Sending Ebook
         if: ${{ success() }}
         run: |
@@ -141,10 +158,11 @@ jobs:
               "$from" "$to" "Deliver \"${title}\""
           done < <(find "$output" -type f -name "*.${ext,,}" -print0)
           echo "All jobs done"
+
       - name: Storing Ebook
         if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
           name: Calibre-News-Delivery
           path: ${{ env.output }}
-          retention-days: ${{ secrets.DAYS || 90 }}
+          retention-days: ${{ env.days }}
