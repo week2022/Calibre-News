@@ -74,38 +74,33 @@ jobs:
         if: ${{ success() }}
         uses: actions/checkout@v4
 
-      - name: Checking Recipe
+      # ✅ 白名单：只允许这4个 recipe 被执行（彻底防误跑）
+      - name: Checking Recipe (Allowlist)
         if: ${{ success() }}
         run: |
-          declare -A recipe_paths
-          add_recipe() {
-            local name="$(basename "$recipe_path")"
-            local key=$(echo "$name" | md5sum | cut -d ' ' -f 1)
-            recipe_paths[$key]="$recipe_path"
-          }
-          if [ -f 'recipe_list.txt' ]; then
-            while read recipe_path || [ -n "$recipe_path" ]; do
-              if [ ! -n "$recipe_path" ]; then continue; fi
-              title="${recipe_path%.recipe}"
-              result="$(ebook-convert --list-recipes | grep "$title" || true)"
-              if [ ! -n "$result" ]; then
-                echo "Recipe \"$recipe_path\" does not exists"; continue
-              fi
-              if [ "${recipe_path##*.}" != 'recipe' ]; then
-                recipe_path="$recipe_path".recipe
-              fi
-              add_recipe
-            done < recipe_list.txt
-          fi
-          while read -d '' recipe_path; do
-            add_recipe
-          done < <(find . -maxdepth 1 -type f -name '*.recipe' -print0)
-          for key in ${!recipe_paths[@]}; do
-            recipe_path="${recipe_paths[$key]}"
-            echo "Recipe path: $recipe_path"
-            echo "$recipe_path" >> temp_recipe_list.txt
+          set -euo pipefail
+
+          allowlist=(
+            "nyt_mix.recipe"
+            "economist_mix.recipe"
+            "ft_mix.recipe"
+            "wapo_mix.recipe"
+          )
+
+          # 清空临时文件，避免历史残留
+          : > temp_recipe_list.txt
+
+          count=0
+          for r in "${allowlist[@]}"; do
+            if [ ! -f "./$r" ]; then
+              echo "Missing recipe file: ./$r"
+              exit 1
+            fi
+            echo "Recipe path: ./$r"
+            echo "./$r" >> temp_recipe_list.txt
+            count=$((count+1))
           done
-          count=${#recipe_paths[@]}
+
           echo "Recipe count: $count"
           if [ $count -eq 0 ]; then
             echo 'No recipe needs processing'; exit 1
